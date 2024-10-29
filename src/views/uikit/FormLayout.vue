@@ -58,6 +58,6 @@ const generarRFC = () => {
     const dia = fecha.split('-')[2]; // Obtiene el día
     
     // Construye el RFC
-    rfc.value = '${letra1}${letra2}${letra3}${letra4}${anio}${mes}${dia}';
+    rfc.value = `${letra1}${letra2}${letra3}${letra4}${anio}${mes}${dia}`;
 };
 </script>
