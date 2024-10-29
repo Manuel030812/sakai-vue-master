@@ -30,7 +30,7 @@ const { onMenuToggle, toggleDarkMode, isDarkTheme } = useLayout();
                     </g>
                 </svg>
 
-                <span>SAKAI</span>
+                <span>Facultad de negocios</span>
             </router-link>
         </div>
 
