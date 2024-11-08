@@ -9,6 +9,11 @@ const router = createRouter({
             component: AppLayout,
             children: [
                 {
+                    path: '/uikit/tienda',
+                    name: 'tienda',
+                    component: () => import('@/views/uikit/Tienda.vue')
+                },
+                {
                     path: '/',
                     name: 'dashboard',
                     component: () => import('@/views/Dashboard.vue')

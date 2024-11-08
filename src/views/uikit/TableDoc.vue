@@ -1,391 +1,212 @@
-<script setup>
-import { CustomerService } from '@/service/CustomerService';
-import { ProductService } from '@/service/ProductService';
-import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
-import { onBeforeMount, reactive, ref } from 'vue';
-
-const customers1 = ref(null);
-const customers2 = ref(null);
-const customers3 = ref(null);
-const filters1 = ref(null);
-const loading1 = ref(null);
-const balanceFrozen = ref(false);
-const products = ref(null);
-const expandedRows = ref([]);
-const statuses = reactive(['unqualified', 'qualified', 'new', 'negotiation', 'renewal', 'proposal']);
-const representatives = reactive([
-    { name: 'Amy Elsner', image: 'amyelsner.png' },
-    { name: 'Anna Fali', image: 'annafali.png' },
-    { name: 'Asiya Javayant', image: 'asiyajavayant.png' },
-    { name: 'Bernardo Dominic', image: 'bernardodominic.png' },
-    { name: 'Elwin Sharvill', image: 'elwinsharvill.png' },
-    { name: 'Ioni Bowcher', image: 'ionibowcher.png' },
-    { name: 'Ivan Magalhaes', image: 'ivanmagalhaes.png' },
-    { name: 'Onyama Limba', image: 'onyamalimba.png' },
-    { name: 'Stephen Shaw', image: 'stephenshaw.png' },
-    { name: 'XuXue Feng', image: 'xuxuefeng.png' }
-]);
-
-function getOrderSeverity(order) {
-    switch (order.status) {
-        case 'DELIVERED':
-            return 'success';
-
-        case 'CANCELLED':
-            return 'danger';
-
-        case 'PENDING':
-            return 'warn';
-
-        case 'RETURNED':
-            return 'info';
-
-        default:
-            return null;
-    }
-}
-
-function getSeverity(status) {
-    switch (status) {
-        case 'unqualified':
-            return 'danger';
-
-        case 'qualified':
-            return 'success';
-
-        case 'new':
-            return 'info';
-
-        case 'negotiation':
-            return 'warn';
-
-        case 'renewal':
-            return null;
-    }
-}
-
-function getStockSeverity(product) {
-    switch (product.inventoryStatus) {
-        case 'INSTOCK':
-            return 'success';
-
-        case 'LOWSTOCK':
-            return 'warn';
-
-        case 'OUTOFSTOCK':
-            return 'danger';
-
-        default:
-            return null;
-    }
-}
-
-onBeforeMount(() => {
-    ProductService.getProductsWithOrdersSmall().then((data) => (products.value = data));
-    CustomerService.getCustomersLarge().then((data) => {
-        customers1.value = data;
-        loading1.value = false;
-        customers1.value.forEach((customer) => (customer.date = new Date(customer.date)));
-    });
-    CustomerService.getCustomersLarge().then((data) => (customers2.value = data));
-    CustomerService.getCustomersMedium().then((data) => (customers3.value = data));
-
-    initFilters1();
-});
-
-function initFilters1() {
-    filters1.value = {
-        global: { value: null, matchMode: FilterMatchMode.CONTAINS },
-        name: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
-        'country.name': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
-        representative: { value: null, matchMode: FilterMatchMode.IN },
-        date: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.DATE_IS }] },
-        balance: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.EQUALS }] },
-        status: { operator: FilterOperator.OR, constraints: [{ value: null, matchMode: FilterMatchMode.EQUALS }] },
-        activity: { value: [0, 100], matchMode: FilterMatchMode.BETWEEN },
-        verified: { value: null, matchMode: FilterMatchMode.EQUALS }
-    };
-}
-
-function expandAll() {
-    expandedRows.value = products.value.reduce((acc, p) => (acc[p.id] = true) && acc, {});
-}
-
-function collapseAll() {
-    expandedRows.value = null;
-}
-
-function formatCurrency(value) {
-    return value.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
-}
-
-function formatDate(value) {
-    return value.toLocaleDateString('en-US', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-    });
-}
-
-function calculateCustomerTotal(name) {
-    let total = 0;
-    if (customers3.value) {
-        for (let customer of customers3.value) {
-            if (customer.representative.name === name) {
-                total++;
-            }
-        }
-    }
-
-    return total;
-}
-</script>
-
 <template>
-    <div class="card">
-        <div class="font-semibold text-xl mb-4">Filtering</div>
-        <DataTable
-            :value="customers1"
-            :paginator="true"
-            :rows="10"
-            dataKey="id"
-            :rowHover="true"
-            v-model:filters="filters1"
-            filterDisplay="menu"
-            :loading="loading1"
-            :filters="filters1"
-            :globalFilterFields="['name', 'country.name', 'representative.name', 'balance', 'status']"
-            showGridlines
-        >
-            <template #header>
-                <div class="flex justify-between">
-                    <Button type="button" icon="pi pi-filter-slash" label="Clear" outlined @click="clearFilter()" />
-                    <IconField>
-                        <InputIcon>
-                            <i class="pi pi-search" />
-                        </InputIcon>
-                        <InputText v-model="filters1['global'].value" placeholder="Keyword Search" />
-                    </IconField>
-                </div>
-            </template>
-            <template #empty> No customers found. </template>
-            <template #loading> Loading customers data. Please wait. </template>
-            <Column field="name" header="Name" style="min-width: 12rem">
-                <template #body="{ data }">
-                    {{ data.name }}
-                </template>
-                <template #filter="{ filterModel }">
-                    <InputText v-model="filterModel.value" type="text" placeholder="Search by name" />
-                </template>
-            </Column>
-            <Column header="Country" filterField="country.name" style="min-width: 12rem">
-                <template #body="{ data }">
-                    <div class="flex items-center gap-2">
-                        <img alt="flag" src="https://primefaces.org/cdn/primevue/images/flag/flag_placeholder.png" :class="`flag flag-${data.country.code}`" style="width: 24px" />
-                        <span>{{ data.country.name }}</span>
-                    </div>
-                </template>
-                <template #filter="{ filterModel }">
-                    <InputText v-model="filterModel.value" type="text" placeholder="Search by country" />
-                </template>
-                <template #filterclear="{ filterCallback }">
-                    <Button type="button" icon="pi pi-times" @click="filterCallback()" severity="secondary"></Button>
-                </template>
-                <template #filterapply="{ filterCallback }">
-                    <Button type="button" icon="pi pi-check" @click="filterCallback()" severity="success"></Button>
-                </template>
-            </Column>
-            <Column header="Agent" filterField="representative" :showFilterMatchModes="false" :filterMenuStyle="{ width: '14rem' }" style="min-width: 14rem">
-                <template #body="{ data }">
-                    <div class="flex items-center gap-2">
-                        <img :alt="data.representative.name" :src="`https://primefaces.org/cdn/primevue/images/avatar/${data.representative.image}`" style="width: 32px" />
-                        <span>{{ data.representative.name }}</span>
-                    </div>
-                </template>
-                <template #filter="{ filterModel }">
-                    <MultiSelect v-model="filterModel.value" :options="representatives" optionLabel="name" placeholder="Any">
-                        <template #option="slotProps">
-                            <div class="flex items-center gap-2">
-                                <img :alt="slotProps.option.name" :src="`https://primefaces.org/cdn/primevue/images/avatar/${slotProps.option.image}`" style="width: 32px" />
-                                <span>{{ slotProps.option.name }}</span>
-                            </div>
-                        </template>
-                    </MultiSelect>
-                </template>
-            </Column>
-            <Column header="Date" filterField="date" dataType="date" style="min-width: 10rem">
-                <template #body="{ data }">
-                    {{ formatDate(data.date) }}
-                </template>
-                <template #filter="{ filterModel }">
-                    <DatePicker v-model="filterModel.value" dateFormat="mm/dd/yy" placeholder="mm/dd/yyyy" />
-                </template>
-            </Column>
-            <Column header="Balance" filterField="balance" dataType="numeric" style="min-width: 10rem">
-                <template #body="{ data }">
-                    {{ formatCurrency(data.balance) }}
-                </template>
-                <template #filter="{ filterModel }">
-                    <InputNumber v-model="filterModel.value" mode="currency" currency="USD" locale="en-US" />
-                </template>
-            </Column>
-            <Column header="Status" field="status" :filterMenuStyle="{ width: '14rem' }" style="min-width: 12rem">
-                <template #body="{ data }">
-                    <Tag :value="data.status" :severity="getSeverity(data.status)" />
-                </template>
-                <template #filter="{ filterModel }">
-                    <Select v-model="filterModel.value" :options="statuses" placeholder="Select One" showClear>
-                        <template #option="slotProps">
-                            <Tag :value="slotProps.option" :severity="getSeverity(slotProps.option)" />
-                        </template>
-                    </Select>
-                </template>
-            </Column>
-            <Column field="activity" header="Activity" :showFilterMatchModes="false" style="min-width: 12rem">
-                <template #body="{ data }">
-                    <ProgressBar :value="data.activity" :showValue="false" style="height: 6px"></ProgressBar>
-                </template>
-                <template #filter="{ filterModel }">
-                    <Slider v-model="filterModel.value" range class="m-4"></Slider>
-                    <div class="flex items-center justify-between px-2">
-                        <span>{{ filterModel.value ? filterModel.value[0] : 0 }}</span>
-                        <span>{{ filterModel.value ? filterModel.value[1] : 100 }}</span>
-                    </div>
-                </template>
-            </Column>
-            <Column field="verified" header="Verified" dataType="boolean" bodyClass="text-center" style="min-width: 8rem">
-                <template #body="{ data }">
-                    <i class="pi" :class="{ 'pi-check-circle text-green-500 ': data.verified, 'pi-times-circle text-red-500': !data.verified }"></i>
-                </template>
-                <template #filter="{ filterModel }">
-                    <label for="verified-filter" class="font-bold"> Verified </label>
-                    <Checkbox v-model="filterModel.value" :indeterminate="filterModel.value === null" binary inputId="verified-filter" />
-                </template>
-            </Column>
-        </DataTable>
-    </div>
+  <div class="p-grid">
+      <Toast />
+      <div class="p-col-12">
+          <div class="card">
+              <Panel header="PUNTO DE VENTA (POS)" style="height: 100%">
+                  <Toolbar class="p-mb-4">
+                      <template v-slot:start>
+                          <InputText type="text" size="40" placeholder="Nombre del producto..." v-model="productoItem.nomProducto" />
+                          <InputText class="ml-8" type="text" placeholder="Cant" v-model="productoItem.cantidad" />
+                          <InputText class="ml-8" type="text" placeholder="$ Precio U." v-model="productoItem.precioUnitario" />
+                      </template>
+                      <template v-slot:end>
+                          <Button label="Registrar" icon="pi pi-plus" class="p-button-success p-mr-2" @click="registrarCompra()" />
+                      </template>
+                  </Toolbar>
+                  <br>
 
-    <div class="card">
-        <div class="font-semibold text-xl mb-4">Frozen Columns</div>
-        <ToggleButton v-model="balanceFrozen" onIcon="pi pi-lock" offIcon="pi pi-lock-open" onLabel="Balance" offLabel="Balance" />
+                  <DataTable :value="tablaCompras" class="p-datatable-gridlines" dataKey="cns" :rows="5" paginator responsiveLayout="scroll">
+                      <Column field="cns" header="Cns" style="width:50px"></Column>
+                      <Column field="nomProducto" header="Nombre del Producto" style="width:370px"></Column>
+                      <Column field="precioUnitario" header="Precio U." style="width:80px">
+                          <template #body="slotProps">
+                              {{ formatoMoneda(slotProps.data.precioUnitario) }}
+                          </template>
+                      </Column>
+                      <Column field="cantidad" header="Cant." style="width:60px; text-align:center"></Column>
+                      <Column field="precioParcial" header="Precio P." style="width:80px">
+                          <template #body="slotProps">
+                              {{ formatoMoneda(slotProps.data.precioParcial) }}
+                          </template>
+                      </Column>
+                      <Column style="width:140px">
+                          <template #header> Acciones </template>
+                          <template #body="slotProps">
+                              <Button icon="pi pi-pencil" class="p-button-success p-mr-2" @click="editarProducto(slotProps.data)"></Button>
+                              <Button icon="pi pi-trash" class="p-button-danger" @click="eliminarProducto(slotProps.data)"></Button>
+                          </template>
+                      </Column>
+                  </DataTable>
 
-        <DataTable :value="customers2" scrollable scrollHeight="400px" class="mt-6">
-            <Column field="name" header="Name" style="min-width: 200px" frozen class="font-bold"></Column>
-            <Column field="id" header="Id" style="min-width: 100px"></Column>
-            <Column field="name" header="Name" style="min-width: 200px"></Column>
-            <Column field="country.name" header="Country" style="min-width: 200px"></Column>
-            <Column field="date" header="Date" style="min-width: 200px"></Column>
-            <Column field="company" header="Company" style="min-width: 200px"></Column>
-            <Column field="status" header="Status" style="min-width: 200px"></Column>
-            <Column field="activity" header="Activity" style="min-width: 200px"></Column>
-            <Column field="representative.name" header="Representative" style="min-width: 200px"></Column>
-            <Column field="balance" header="Balance" style="min-width: 200px" alignFrozen="right" :frozen="balanceFrozen">
-                <template #body="{ data }">
-                    <span class="font-bold">{{ formatCurrency(data.balance) }}</span>
-                </template>
-            </Column>
-        </DataTable>
-    </div>
+                  <!-- Totales -->
+                  <div class="p-grid p-justify-end p-mt-4">
+                      <div class="p-col-12 p-md-4">
+                          <div class="p-d-flex p-jc-between">
+                              <div><strong>Subtotal:</strong></div>
+                              <div>{{ formatoMoneda(subtotal) }}</div>
+                          </div>
+                          <div class="p-d-flex p-jc-between">
+                              <div><strong>IVA (16%):</strong></div>
+                              <div>{{ formatoMoneda(iva) }}</div>
+                          </div>
+                          <div class="p-d-flex p-jc-between">
+                              <div><strong>Total:</strong></div>
+                              <div>{{ formatoMoneda(total) }}</div>
+                          </div>
+                      </div>
+                  </div>
 
-    <div class="card">
-        <div class="font-semibold text-xl mb-4">Row Expansion</div>
-        <DataTable v-model:expandedRows="expandedRows" :value="products" dataKey="id" tableStyle="min-width: 60rem">
-            <template #header>
-                <div class="flex flex-wrap justify-end gap-2">
-                    <Button text icon="pi pi-plus" label="Expand All" @click="expandAll" />
-                    <Button text icon="pi pi-minus" label="Collapse All" @click="collapseAll" />
-                </div>
-            </template>
-            <Column expander style="width: 5rem" />
-            <Column field="name" header="Name"></Column>
-            <Column header="Image">
-                <template #body="slotProps">
-                    <img :src="`https://primefaces.org/cdn/primevue/images/product/${slotProps.data.image}`" :alt="slotProps.data.image" class="shadow-lg" width="64" />
-                </template>
-            </Column>
-            <Column field="price" header="Price">
-                <template #body="slotProps">
-                    {{ formatCurrency(slotProps.data.price) }}
-                </template>
-            </Column>
-            <Column field="category" header="Category"></Column>
-            <Column field="rating" header="Reviews">
-                <template #body="slotProps">
-                    <Rating :modelValue="slotProps.data.rating" readonly />
-                </template>
-            </Column>
-            <Column header="Status">
-                <template #body="slotProps">
-                    <Tag :value="slotProps.data.inventoryStatus" :severity="getStockSeverity(slotProps.data)" />
-                </template>
-            </Column>
-            <template #expansion="slotProps">
-                <div class="p-4">
-                    <h5>Orders for {{ slotProps.data.name }}</h5>
-                    <DataTable :value="slotProps.data.orders">
-                        <Column field="id" header="Id" sortable></Column>
-                        <Column field="customer" header="Customer" sortable></Column>
-                        <Column field="date" header="Date" sortable></Column>
-                        <Column field="amount" header="Amount" sortable>
-                            <template #body="slotProps">
-                                {{ formatCurrency(slotProps.data.amount) }}
-                            </template>
-                        </Column>
-                        <Column field="status" header="Status" sortable>
-                            <template #body="slotProps">
-                                <Tag :value="slotProps.data.status.toLowerCase()" :severity="getOrderSeverity(slotProps.data)" />
-                            </template>
-                        </Column>
-                        <Column headerStyle="width:4rem">
-                            <template #body>
-                                <Button icon="pi pi-search" />
-                            </template>
-                        </Column>
-                    </DataTable>
-                </div>
-            </template>
-        </DataTable>
-    </div>
+                  <!-- Modal for Update -->
+                  <Dialog v-model:visible="visibleUpdate" modal header="Actualizar datos de un producto" :style="{ width: '45vw' }">
+                      <div class="flex gap-2">
+                          <div class="flex-auto">
+                              <label><strong>Nombre del producto:</strong></label>
+                              <InputText class="ml-2" v-model="nomp" />
+                          </div>
+                          <div class="flex-auto">
+                              <label><strong>Precio Unitario:</strong></label>
+                              <InputText class="ml-2" v-model="precioUnitario" />
+                          </div>
+                          <div class="flex-auto">
+                              <label><strong>Cantidad:</strong></label>
+                              <InputText class="ml-2" v-model="cantidad" />
+                          </div>
+                      </div>
+                      <template #footer>
+                          <Button label="Actualizar" icon="pi pi-replay" @click="updateProducto()" />
+                      </template>
+                  </Dialog>
 
-    <div class="card">
-        <div class="font-semibold text-xl mb-4">Grouping</div>
-        <DataTable :value="customers3" rowGroupMode="subheader" groupRowsBy="representative.name" sortMode="single" sortField="representative.name" :sortOrder="1" scrollable scrollHeight="400px" tableStyle="min-width: 50rem">
-            <template #groupheader="slotProps">
-                <div class="flex items-center gap-2">
-                    <img :alt="slotProps.data.representative.name" :src="`https://primefaces.org/cdn/primevue/images/avatar/${slotProps.data.representative.image}`" width="32" style="vertical-align: middle" />
-                    <span>{{ slotProps.data.representative.name }}</span>
-                </div>
-            </template>
-            <Column field="representative.name" header="Representative"></Column>
-            <Column field="name" header="Name" style="min-width: 200px"></Column>
-            <Column field="country" header="Country" style="min-width: 200px">
-                <template #body="slotProps">
-                    <div class="flex items-center gap-2">
-                        <img alt="flag" src="https://primefaces.org/cdn/primevue/images/flag/flag_placeholder.png" :class="`flag flag-${slotProps.data.country.code}`" style="width: 24px" />
-                        <span>{{ slotProps.data.country.name }}</span>
-                    </div>
-                </template>
-            </Column>
-            <Column field="company" header="Company" style="min-width: 200px"></Column>
-            <Column field="status" header="Status" style="min-width: 200px">
-                <template #body="slotProps">
-                    <Tag :value="slotProps.data.status" :severity="getSeverity(slotProps.data.status)" />
-                </template>
-            </Column>
-            <Column field="date" header="Date" style="min-width: 200px"></Column>
-            <template #groupfooter="slotProps">
-                <div class="flex justify-end font-bold w-full">Total Customers: {{ calculateCustomerTotal(slotProps.data.representative.name) }}</div>
-            </template>
-        </DataTable>
-    </div>
+                  <!-- Modal for Delete Confirmation -->
+                  <Dialog v-model:visible="visibleDelete" modal header="¿Estás seguro que quieres borrar este producto?" :style="{ width: '30vw' }">
+                      <p>Confirma si deseas eliminar este producto.</p>
+                      <template #footer>
+                          <Button label="Eliminar" icon="pi pi-check" class="p-button-danger" @click="deleteProducto()" />
+                          <Button label="Cancelar" icon="pi pi-times" class="p-button-secondary" @click="visibleDelete = false" />
+                      </template>
+                  </Dialog>
+              </Panel>
+          </div>
+      </div>
+  </div>
 </template>
 
-<style scoped lang="scss">
-:deep(.p-datatable-frozen-tbody) {
-    font-weight: bold;
-}
+<script>
+import { useToast } from 'primevue/usetoast';
+import { ref, computed } from 'vue';
 
-:deep(.p-datatable-scrollable .p-frozen-column) {
-    font-weight: bold;
-}
-</style>
+export default {
+  setup() {
+      const toast = useToast();
+      const visibleUpdate = ref(false);
+      const visibleDelete = ref(false);
+
+      const nomp = ref('');
+      const cantidad = ref('');
+      const precioUnitario = ref('');
+      const productoSeleccionado = ref(null);
+
+      const tablaCompras = ref([
+          { cns: 1, nomProducto: "Impresora LaserJet Color", cantidad: 2, precioUnitario: 5200.00, precioParcial: 10400.00 },
+          { cns: 2, nomProducto: "Monitor LED 31 plg.", cantidad: 3, precioUnitario: 1700.00, precioParcial: 5100.00 }
+      ]);
+
+      const productoItem = ref({
+          cns: null,
+          nomProducto: '',
+          cantidad: '',
+          precioUnitario: ''
+      });
+
+      const subtotal = computed(() =>
+          tablaCompras.value.reduce((acc, item) => acc + item.precioParcial, 0)
+      );
+
+      const iva = computed(() => subtotal.value * 0.16);
+      const total = computed(() => subtotal.value + iva.value);
+
+      function registrarCompra() {
+          if (
+              productoItem.value.nomProducto.trim() !== '' &&
+              productoItem.value.cantidad !== '' &&
+              productoItem.value.precioUnitario !== ''
+          ) {
+              tablaCompras.value.push({
+                  cns: tablaCompras.value.length + 1,
+                  nomProducto: productoItem.value.nomProducto,
+                  cantidad: parseFloat(productoItem.value.cantidad),
+                  precioUnitario: parseFloat(productoItem.value.precioUnitario),
+                  precioParcial: parseFloat(productoItem.value.cantidad) * parseFloat(productoItem.value.precioUnitario)
+              });
+              toast.add({ severity: 'success', summary: 'Confirmación', detail: 'Nueva compra registrada', life: 3000 });
+
+              productoItem.value.nomProducto = '';
+              productoItem.value.cantidad = '';
+              productoItem.value.precioUnitario = '';
+          } else {
+              toast.add({ severity: 'warn', summary: 'Advertencia', detail: 'Todos los campos son requeridos', life: 3000 });
+          }
+      }
+
+      function eliminarProducto(row) {
+          productoSeleccionado.value = row;
+          visibleDelete.value = true;
+      }
+
+      function deleteProducto() {
+          const index = tablaCompras.value.findIndex(producto => producto.cns === productoSeleccionado.value.cns);
+          if (index !== -1) {
+              tablaCompras.value.splice(index, 1);
+              toast.add({ severity: 'info', summary: 'Eliminado', detail: 'Producto eliminado correctamente', life: 3000 });
+          }
+          visibleDelete.value = false;
+      }
+
+      function editarProducto(row) {
+          productoSeleccionado.value = row;
+          nomp.value = row.nomProducto;
+          cantidad.value = row.cantidad;
+          precioUnitario.value = row.precioUnitario;
+          visibleUpdate.value = true;
+      }
+
+      function updateProducto() {
+          if (productoSeleccionado.value) {
+              productoSeleccionado.value.nomProducto = nomp.value;
+              productoSeleccionado.value.cantidad = cantidad.value;
+              productoSeleccionado.value.precioUnitario = precioUnitario.value;
+              productoSeleccionado.value.precioParcial = cantidad.value * precioUnitario.value;
+
+              toast.add({ severity: 'success', summary: 'Actualización', detail: 'Producto actualizado correctamente', life: 3000 });
+              visibleUpdate.value = false;
+          }
+      }
+
+      function formatoMoneda(value) {
+          if (value) return value.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+          return '';
+      }
+
+      return {
+          toast,
+          visibleUpdate,
+          visibleDelete,
+          nomp,
+          cantidad,
+          precioUnitario,
+          productoItem,
+          tablaCompras,
+          registrarCompra,
+          eliminarProducto,
+          deleteProducto,
+          editarProducto,
+          updateProducto,
+          formatoMoneda,
+          subtotal,
+          iva,
+          total
+      };
+  }
+};
+</script>
