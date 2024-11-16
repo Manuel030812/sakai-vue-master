@@ -4,7 +4,7 @@
             <div class="md:w-1/2">
                 <div class="card flex flex-col gap-4 p-6 shadow-lg rounded-lg">
                     <div class="font-semibold text-xl">Formulario de Producto</div>
-                    
+
                     <!-- Campo de ID para ingresar el ID del producto -->
                     <div class="flex flex-col gap-2">
                         <label for="id" class="text-gray-700">ID</label>
@@ -28,14 +28,15 @@
                         <label for="capacidad" class="text-gray-700">Capacidad</label>
                         <InputText v-model="capacidad" id="capacidad" type="text" class="p-2 border border-gray-300 rounded" readonly />
                     </div>
-                    
+
                     <!-- Botón para consultar un producto por ID -->
-                    <button 
-                        type="button" 
+                    <button
+                        type="button"
                         @click="cargarProducto"
                         class="mt-4 bg-green-500 text-white py-2 px-4 rounded cursor-pointer hover:bg-green-600 transition">
                         Consultar Producto por ID
                     </button>
+                    <div v-if="loading" class="text-center mt-4 text-gray-600">Cargando...</div>
                 </div>
             </div>
         </div>
@@ -78,7 +79,8 @@ export default {
             nombre: '',
             color: '',
             capacidad: '',
-            productos: [] // Lista para almacenar todos los productos
+            productos: [],
+            loading: false // Indicador de carga
         };
     },
     computed: {
@@ -88,32 +90,33 @@ export default {
     },
     methods: {
         cargarProducto() {
-            if (!this.id) {
+            if (!this.id.trim()) {
                 alert('Por favor, ingrese un ID de producto.');
                 return;
             }
 
+            this.loading = true;
             axios
                 .get(`https://api.restful-api.dev/objects/${this.id}`)
                 .then((response) => {
-                    if (response.data && response.data.name) {
+                    if (response.data) {
                         const producto = response.data;
                         this.nombre = producto.name || 'No disponible';
                         this.color = producto.data?.color || 'N/A';
                         this.capacidad = producto.data?.capacity || producto.data?.['capacity GB'] || 'N/A';
-                    } else if (typeof response.data === 'string') {
-                        console.error('Respuesta inesperada (string):', response.data);
-                        alert(`Error de servidor: ${response.data}`);
                     } else {
-                        console.error('Formato de datos inesperado:', response.data);
                         alert('No se encontró el producto con el ID especificado.');
                     }
                 })
                 .catch((error) => {
                     this.handleError(error);
+                })
+                .finally(() => {
+                    this.loading = false;
                 });
         },
         cargarProductos() {
+            this.loading = true;
             axios
                 .get('https://api.restful-api.dev/objects')
                 .then((response) => {
@@ -123,24 +126,26 @@ export default {
                             color: producto.data?.color || 'N/A',
                             capacidad: producto.data?.capacity || producto.data?.['capacity GB'] || 'N/A'
                         }));
-                    } else if (typeof response.data === 'string') {
-                        console.error('Respuesta inesperada (string):', response.data);
-                        alert(`Error de servidor: ${response.data}`);
                     } else {
-                        console.error('Formato de datos inesperado:', response.data);
                         alert('No se pudo obtener la lista de productos.');
                     }
                 })
                 .catch((error) => {
                     this.handleError(error);
+                })
+                .finally(() => {
+                    this.loading = false;
                 });
         },
         handleError(error) {
             console.error('Error al consultar la API:', error);
             if (error.response) {
-                console.error('Detalles del error:', error.response.data);
+                alert(`Error del servidor: ${error.response.status} - ${error.response.data}`);
+            } else if (error.request) {
+                alert('Error de red: no se recibió respuesta del servidor.');
+            } else {
+                alert('Error al procesar la solicitud: ' + error.message);
             }
-            alert('No se pudo obtener los datos. Verifique la conexión o intente más tarde.');
         }
     },
     mounted() {
