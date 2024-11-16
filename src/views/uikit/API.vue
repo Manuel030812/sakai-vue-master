@@ -97,7 +97,7 @@ export default {
 
             this.loading = true;
             axios
-                .get(`https://api.restful-api.dev/objects/${this.id}`)
+                .get(`https://api.restful-api.dev/objects/${this.id}`) // Usa backticks
                 .then((response) => {
                     if (response.data) {
                         const producto = response.data;
@@ -140,7 +140,7 @@ export default {
         handleError(error) {
             console.error('Error al consultar la API:', error);
             if (error.response) {
-                alert(`Error del servidor: ${error.response.status} - ${error.response.data}`);
+                alert(`Error del servidor: ${error.response.status} - ${error.response.data}`); // Corrige la interpolación
             } else if (error.request) {
                 alert('Error de red: no se recibió respuesta del servidor.');
             } else {
