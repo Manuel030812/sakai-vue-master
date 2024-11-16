@@ -13,6 +13,7 @@ const model = ref([
         items: [
             { label: 'Demo User', icon: 'pi pi-fw pi-id-card', to: '/uikit/formlayout' },
             { label: 'Tienda', icon: 'pi pi-fw pi-table', to: '/uikit/tienda' },
+            { label: 'api consumida', icon: 'pi pi-fw pi-table', to: '/uikit/api' },
             { label: 'Input', icon: 'pi pi-fw pi-check-square', to: '/uikit/input' },
             { label: 'Button', icon: 'pi pi-fw pi-mobile', to: '/uikit/button', class: 'rotated-icon' },
             { label: 'Table', icon: 'pi pi-fw pi-table', to: '/uikit/table' },
