@@ -19,7 +19,7 @@ const router = createRouter({
                     component: () => import('@/views/Dashboard.vue')
                 },
                 {
-                    path: '/uikit/API',
+                    path: '/uikit/api',
                     name: 'Apiconsumida',
                     component: () => import('@/views/uikit/API.vue')
                 },
